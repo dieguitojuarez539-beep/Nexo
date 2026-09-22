@@ -1,0 +1,3 @@
+import {pool,tx} from './db.mjs';import fs from 'node:fs/promises';
+await pool.query('CREATE TABLE IF NOT EXISTS schema_migrations(version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
+for(const f of (await fs.readdir(new URL('../migrations/',import.meta.url))).filter(x=>x.endsWith('.sql')).sort()){await tx(async c=>{await c.query("SELECT pg_advisory_xact_lock(hashtext('nexo-migrations'))");if((await c.query('SELECT 1 FROM schema_migrations WHERE version=$1',[f])).rowCount)return;await c.query(await fs.readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));await c.query('INSERT INTO schema_migrations(version) VALUES($1)',[f]);console.log('Applied',f)})}await pool.end();
